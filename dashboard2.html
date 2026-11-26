@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BESTDOC v11.0 — Hospital Quality, Sentiment & Root-Cause Intelligence Suite</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: #060b16;
+      color: #f1f5f9;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .card-dark {
+      background: linear-gradient(180deg, #0c1427 0%, #091020 100%);
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+    }
+    .strength-box {
+      background: linear-gradient(180deg, rgba(6, 40, 38, 0.35) 0%, rgba(9, 16, 32, 0.95) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      border-radius: 14px;
+    }
+    .bottleneck-box {
+      background: linear-gradient(180deg, rgba(55, 15, 30, 0.35) 0%, rgba(9, 16, 32, 0.95) 100%);
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      border-radius: 14px;
+    }
+    .inner-strength-card {
+      background: rgba(11, 22, 39, 0.85);
+      border: 1px solid rgba(16, 185, 129, 0.28);
+      border-left: 4px solid #10b981;
+      border-radius: 10px;
+    }
+    .inner-bottleneck-card {
+      background: rgba(20, 14, 28, 0.85);
+      border: 1px solid rgba(244, 63, 94, 0.28);
+      border-left: 4px solid #f43f5e;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-12">
+
+  <!-- TOP HEADER BAR -->
+  <header class="bg-[#080f1e]/95 backdrop-blur border-b border-slate-800/80 sticky top-0 z-50 px-6 py-3.5 shadow-2xl">
+    <div class="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wider bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 rounded-md">
+            BESTDOC v11.0
+          </span>
+          <h1 class="text-lg md:text-xl font-extrabold text-white tracking-tight">
+            Hospital Quality, Sentiment & Root-Cause Intelligence Suite
+          </h1>
+          <span id="autoDetectPill" class="px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide bg-slate-800 text-slate-300 border border-slate-700 rounded-full">
+            Waiting for File Upload...
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1">
+          Real-Date Period Filtering • Pareto Ticket Problem Scaling • Trained .pkl Inference • Top 5 Verbatims
+        </p>
+      </div>
+
+      <!-- UPLOAD BAR & SWAGGER LINK -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <span id="activeDashboardPill" class="hidden px-3.5 py-1.5 text-xs font-extrabold rounded-full bg-cyan-500 text-slate-950 shadow">
+          Feedback Dashboard
+        </span>
+
+        <form id="uploadForm" class="flex items-center gap-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-700">
+          <input type="file" id="fileInput" accept=".json,.csv,.xlsx,.xls,.zip" required
+            class="text-xs text-slate-300 w-52 file:mr-2.5 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer" />
+          <select id="moduleSelect" class="bg-slate-950 text-xs text-slate-200 border border-slate-700 rounded-lg px-2 py-1">
+            <option value="AUTO">Auto-Detect</option>
+            <option value="FEEDBACK">Feedback (.json)</option>
+            <option value="TICKETS">Tickets (.json)</option>
+            <option value="NPS">NPS (.xlsx/.json)</option>
+            <option value="CSAT">CSAT (.xlsx/.json)</option>
+          </select>
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-1 rounded-lg transition">
+            Upload & Predict
+          </button>
+        </form>
+
+        <a href="/docs" target="_blank" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 hover:bg-indigo-600/30 transition">
+          Swagger /docs ↗
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- LIVE SINGLE-SENTENCE .PKL MODEL TESTER BAR -->
+  <div class="max-w-[1440px] mx-auto px-6 pt-4">
+    <form id="livePredictForm" class="card-dark px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 rounded">
+          Live .PKL Tester
+        </span>
+        <span class="text-xs font-bold text-slate-300">Test Any Patient Sentence:</span>
+      </div>
+      <input type="text" id="liveTextInput" placeholder="e.g., OPD scheduling was gr8 👍, or Waited 2 hrs at billing counter 😡" required
+        class="flex-1 min-w-[260px] bg-slate-950 text-xs text-white border border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-500" />
+      <select id="liveModuleSelect" class="bg-slate-950 text-xs text-slate-200 border border-slate-700 rounded-lg px-2.5 py-1.5">
+        <option value="FEEDBACK">feedback_best_model.pkl</option>
+        <option value="TICKETS">ticket_best_model.pkl</option>
+        <option value="NPS">nps_best_model.pkl</option>
+        <option value="CSAT">csat_best_model.pkl</option>
+      </select>
+      <button type="submit" class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition">
+        Predict Sentiment
+      </button>
+      <div id="livePredictResult" class="text-xs font-bold text-slate-300"></div>
+    </form>
+  </div>
+
+  <!-- WAITING SCREEN -->
+  <div id="waitingScreen" class="max-w-2xl mx-auto mt-14 p-8 card-dark text-center shadow-2xl">
+    <div class="w-14 h-14 mx-auto rounded-2xl bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center text-2xl mb-4">
+      📂
+    </div>
+    <h2 class="text-lg font-extrabold text-white">Ready to Predict with Your 4 Trained .pkl Models</h2>
+    <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+      Upload <b>feedback.json</b>, <b>ticket.json</b>, <b>NPS Report.xlsx</b>, or <b>Customer Satisfaction Report.xlsx</b> using the top-right upload bar (or via <a href="/docs" target="_blank" class="text-cyan-400 underline">/docs</a>) to generate the full intelligence dashboard.
+    </p>
+  </div>
+
+  <!-- MAIN DASHBOARD CONTENT -->
+  <main id="dashboardContent" class="hidden max-w-[1440px] mx-auto px-6 pt-5 space-y-6">
+
+    <!-- ROW 1: 4 KPI SUMMARY CARDS -->
+    <section id="kpiGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></section>
+
+    <!-- ROW 2: STRENGTHS (LEFT GREEN) & BOTTLENECKS (RIGHT RED) DIAGNOSTIC BOXES -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="strength-box p-5 shadow-xl">
+        <h2 id="strengthHeadline" class="text-sm font-extrabold uppercase tracking-wide text-emerald-400"></h2>
+        <p id="strengthExplanation" class="text-xs text-slate-400 mt-0.5 mb-4"></p>
+        <div id="strengthCardsContainer" class="space-y-3"></div>
+      </div>
+
+      <div class="bottleneck-box p-5 shadow-xl">
+        <h2 id="sentimentHeadline" class="text-sm font-extrabold uppercase tracking-wide text-rose-400"></h2>
+        <p id="sentimentExplanation" class="text-xs text-slate-400 mt-0.5 mb-4"></p>
+        <div id="rootCauseCardsContainer" class="space-y-3"></div>
+      </div>
+    </section>
+
+    <!-- ROW 3: DEPARTMENT SENTIMENT SPLIT (LEFT) & SUB-QUESTION / PARETO SEVERITY (RIGHT) -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card-dark p-5 shadow-xl">
+        <h3 id="leftChartTitle" class="text-sm font-bold text-white">Department Feedback Sentiment Split (All Hospital Units)</h3>
+        <p id="leftChartSub" class="text-[11px] text-slate-400 mt-0.5 mb-3">Hover any bar to inspect department root cause & patient feedback</p>
+        <div class="h-72"><canvas id="deptSplitChart"></canvas></div>
+      </div>
+
+      <div class="card-dark p-5 shadow-xl">
+        <h3 id="rightChartTitle" class="text-sm font-bold text-white">Sub-Question Polarity Share (%)</h3>
+        <p id="rightChartSub" class="text-[11px] text-slate-400 mt-0.5 mb-3">Percentage of Negative, Neutral & Positive responses per question</p>
+        <div class="h-72"><canvas id="subQuestionChart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ROW 4: 3 CONNECTED DOTTED TRACKS & OVERALL CIRCLE TREND FOR REAL DATES ONLY -->
+    <section class="card-dark p-6 shadow-xl space-y-5">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 id="trendMainHeading" class="text-sm font-bold text-white">Overall Hospital Sentiment Trend — Positive, Neutral & Negative (%) Across Real Dates</h3>
+          <p class="text-[11px] text-slate-400 mt-0.5">
+            Shows ONLY real dates/months present in the uploaded dataset across ALL hospital departments (Hover any badge for full hospital breakdown)
+          </p>
+        </div>
+        <div id="trendLegendBar" class="flex flex-wrap items-center gap-3 text-[11px] text-slate-300 bg-slate-900/90 px-3.5 py-1.5 rounded-full border border-slate-800">
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-lime-600 inline-block"></span> Positive %</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-amber-600 inline-block"></span> Neutral %</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-rose-700 inline-block"></span> Negative %</span>
+        </div>
+      </div>
+
+      <!-- UPPER PANEL: 3 CONNECTED DOTTED TRACKS -->
+      <div class="bg-[#070d19] border border-slate-800/90 rounded-xl p-4">
+        <div id="upperTrendSubBanner" class="text-center text-[11px] font-bold uppercase tracking-wider text-slate-300 bg-slate-900/90 py-1.5 rounded mb-4">
+          POSITIVE, NEUTRAL & NEGATIVE TREND ACROSS ALL DEPARTMENTS (%)
+        </div>
+        <div id="dottedBadgeTrendContainer" class="relative py-2 px-2 overflow-x-auto"></div>
+      </div>
+
+      <!-- LOWER PANEL: OVERALL PATIENT SATISFACTION / TICKET PROBLEM SURGE TREND -->
+      <div class="bg-[#070d19] border border-slate-800/90 rounded-xl p-4">
+        <div id="overallTrendSubBanner" class="text-center text-[11px] font-bold uppercase tracking-wider text-cyan-300 bg-slate-900/90 py-1.5 rounded mb-4">
+          OVERALL PATIENT SATISFACTION RATE TREND (%) — ALL DEPARTMENTS
+        </div>
+        <div id="circleTrendContainer" class="relative py-4 px-2 overflow-x-auto"></div>
+      </div>
+    </section>
+
+    <!-- ROW 5: TOP 5 POSITIVE COMMENTS & TOP 5 NEGATIVE COMMENTS -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="strength-box p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-1">
+          <h3 class="text-sm font-extrabold uppercase tracking-wide text-emerald-400">
+            😍 TOP 5 POSITIVE / RESOLVED RECORDS (BASED ON RESPONSES)
+          </h3>
+          <span class="px-2.5 py-0.5 text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full">
+            Top 5 Positive
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400 mb-4">Highest-rated positive patient responses & resolved SLA recoveries from uploaded data</p>
+        <div id="topPositiveContainer" class="space-y-3"></div>
+      </div>
+
+      <div class="bottleneck-box p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-1">
+          <h3 class="text-sm font-extrabold uppercase tracking-wide text-rose-400">
+            🚨 TOP 5 NEGATIVE / OPEN COMPLAINTS (BASED ON RESPONSES)
+          </h3>
+          <span class="px-2.5 py-0.5 text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 rounded-full">
+            Top 5 Negative
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400 mb-4">Critical negative patient responses & bottleneck root causes from uploaded data</p>
+        <div id="topNegativeContainer" class="space-y-3"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    let deptChart = null;
+    let subQChart = null;
+    let lastRenderedSignature = "";
+
+    document.getElementById('livePredictForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const txt = document.getElementById('liveTextInput').value;
+      const mod = document.getElementById('liveModuleSelect').value;
+      const fd = new FormData();
+      fd.append('text', txt);
+      fd.append('module', mod);
+      fd.append('department', 'OPD');
+
+      const res = await fetch('/api/predict-text', { method: 'POST', body: fd });
+      const out = await res.json();
+      const box = document.getElementById('livePredictResult');
+      const color = out.predictedPolarity === 'Positive' ? 'text-emerald-400' : (out.predictedPolarity === 'Negative' ? 'text-rose-400' : 'text-amber-400');
+      box.innerHTML = `<span class="${color}">${out.uiSentiment} (${out.confidencePct}%)</span> <span class="text-slate-500">via ${out.pklModelUsed}</span>`;
+    });
+
+    function renderDottedAndCircleTrends(periodTrend, mod, trendTitle) {
+      const items = periodTrend || [];
+      const dottedBox = document.getElementById('dottedBadgeTrendContainer');
+      const circleBox = document.getElementById('circleTrendContainer');
+      const bannerEl = document.getElementById('overallTrendSubBanner');
+      const upperBannerEl = document.getElementById('upperTrendSubBanner');
+      const mainHeadingEl = document.getElementById('trendMainHeading');
+      const legendBarEl = document.getElementById('trendLegendBar');
+
+      const isTickets = mod === 'TICKETS';
+
+      if (mainHeadingEl) {
+        mainHeadingEl.textContent = isTickets
+          ? 'Monthly Ticket Problem Surge, Open Backlog & SLA Resolution Trend Across Real Dates'
+          : 'Overall Hospital Sentiment Trend — Positive, Neutral & Negative (%) Across Real Dates';
+      }
+
+      if (upperBannerEl) {
+        upperBannerEl.textContent = isTickets
+          ? 'SLA SOLVED %, OPEN BACKLOG % & HOSPITAL PROBLEM SHARE % TREND'
+          : 'POSITIVE, NEUTRAL & NEGATIVE TREND ACROSS ALL DEPARTMENTS (%)';
+      }
+
+      if (legendBarEl) {
+        legendBarEl.innerHTML = isTickets ? `
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-lime-600 inline-block"></span> SLA Solved %</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-amber-600 inline-block"></span> Open Backlog %</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-rose-700 inline-block"></span> Monthly Problem Share %</span>
+        ` : `
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-lime-600 inline-block"></span> Positive %</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-amber-600 inline-block"></span> Neutral %</span>
+          <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-rose-700 inline-block"></span> Negative %</span>
+        `;
+      }
+
+      if (bannerEl) {
+        bannerEl.textContent = trendTitle || (
+          isTickets
+            ? 'OVERALL HOSPITAL ESCALATED TICKET SURGE & PROBLEM SHARE TREND — ALL DEPARTMENTS'
+            : `OVERALL ${mod} SATISFACTION RATE TREND (%) — ALL DEPARTMENTS`
+        );
+      }
+
+      if (!items.length) {
+        dottedBox.innerHTML = '';
+        circleBox.innerHTML = '';
+        return;
+      }
+
+      const justifyCls = items.length === 1 ? 'justify-center' : 'justify-between';
+
+      const row1Label = isTickets ? 'SLA Solved %' : 'Positive %';
+      const row2Label = isTickets ? 'Open Backlog %' : 'Neutral %';
+      const row3Label = isTickets ? 'Problem Share %' : 'Negative %';
+
+      const posBadgesHtml = items.map(pt => {
+        const pos = pt.positivePct ?? 0;
+        const tip = (pt.hoverReason || '').replace(/"/g, '&quot;');
+        return `
+          <div class="flex flex-col items-center min-w-[115px] z-10" title="${tip}">
+            <span class="px-2.5 py-0.5 text-xs font-extrabold bg-lime-600 text-white rounded shadow border border-lime-400 cursor-pointer">
+              ${pos}%
+            </span>
+          </div>
+        `;
+      }).join('');
+
+      const neuBadgesHtml = items.map(pt => {
+        const neu = pt.neutralPct ?? 0;
+        const tip = (pt.hoverReason || '').replace(/"/g, '&quot;');
+        return `
+          <div class="flex flex-col items-center min-w-[115px] z-10" title="${tip}">
+            <span class="px-2.5 py-0.5 text-xs font-extrabold bg-amber-600 text-white rounded shadow border border-amber-400 cursor-pointer">
+              ${neu}%
+            </span>
+          </div>
+        `;
+      }).join('');
+
+      const negBadgesHtml = items.map(pt => {
+        const neg = pt.negativePct ?? 0;
+        const tip = (pt.hoverReason || '').replace(/"/g, '&quot;');
+        return `
+          <div class="flex flex-col items-center min-w-[115px] z-10" title="${tip}">
+            <span class="px-2.5 py-0.5 text-xs font-extrabold bg-rose-700 text-white rounded shadow border border-rose-400 cursor-pointer">
+              ${neg}%
+            </span>
+            <span class="text-[11px] font-bold text-slate-200 mt-2.5">${pt.period}</span>
+            <span class="text-[10px] text-slate-400">${pt.totalRecords || ''} ${isTickets ? 'tickets' : 'records'}</span>
+          </div>
+        `;
+      }).join('');
+
+      dottedBox.innerHTML = `
+        <div class="min-w-[580px] space-y-6 py-2">
+          <div class="relative flex items-center">
+            <span class="w-28 text-[11px] font-bold text-lime-400 shrink-0">${row1Label}</span>
+            <div class="relative flex-1">
+              <div class="absolute left-12 right-12 top-1/2 -translate-y-1/2 border-t-2 border-dotted border-lime-500/85 z-0"></div>
+              <div class="relative flex items-center ${justifyCls} px-6">${posBadgesHtml}</div>
+            </div>
+          </div>
+
+          <div class="relative flex items-center">
+            <span class="w-28 text-[11px] font-bold text-amber-400 shrink-0">${row2Label}</span>
+            <div class="relative flex-1">
+              <div class="absolute left-12 right-12 top-1/2 -translate-y-1/2 border-t-2 border-dotted border-amber-500/85 z-0"></div>
+              <div class="relative flex items-center ${justifyCls} px-6">${neuBadgesHtml}</div>
+            </div>
+          </div>
+
+          <div class="relative flex items-start">
+            <span class="w-28 text-[11px] font-bold text-rose-400 shrink-0 pt-1">${row3Label}</span>
+            <div class="relative flex-1">
+              <div class="absolute left-12 right-12 top-3 border-t-2 border-dotted border-rose-500/85 z-0"></div>
+              <div class="relative flex items-start ${justifyCls} px-6">${negBadgesHtml}</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const circlesHtml = items.map(pt => {
+        const net = pt.netScore ?? pt.positivePct ?? 0;
+        const suffix = mod === 'NPS' ? '' : '%';
+        const dispText = pt.circleLabel || `${net}${suffix}`;
+        const tip = (pt.hoverReason || '').replace(/"/g, '&quot;');
+
+        const badgeCls = isTickets
+          ? "px-3.5 py-2.5 rounded-full bg-rose-700 border-2 border-rose-300 text-xs font-extrabold text-white shadow-lg shadow-rose-600/40 cursor-pointer"
+          : "w-12 h-12 rounded-full bg-sky-600 border-2 border-white flex items-center justify-center text-xs font-extrabold text-white shadow-lg shadow-sky-500/30 cursor-pointer";
+
+        return `
+          <div class="flex flex-col items-center min-w-[115px] z-10" title="${tip}">
+            <div class="${badgeCls}">
+              ${dispText}
+            </div>
+            <span class="text-[11px] font-bold text-slate-200 mt-2.5">${pt.period}</span>
+            <span class="text-[10px] ${isTickets ? 'text-rose-400 font-semibold' : 'text-cyan-400/90'}">
+              ${isTickets ? 'Escalated Problem Load' : 'All Depts Overall'}
+            </span>
+          </div>
+        `;
+      }).join('');
+
+      const lineClr = isTickets ? 'border-rose-500' : 'border-sky-500';
+      const leftLabel = isTickets ? 'Problem Surge' : 'Overall Rate';
+      const leftColor = isTickets ? 'text-rose-400' : 'text-cyan-400';
+
+      circleBox.innerHTML = `
+        <div class="relative min-w-[580px] py-2 flex items-start">
+          <span class="w-28 text-[11px] font-bold ${leftColor} shrink-0 pt-3.5">${leftLabel}</span>
+          <div class="relative flex-1">
+            <div class="absolute left-14 right-14 top-5 border-t-2 ${lineClr} z-0"></div>
+            <div class="relative flex items-center ${justifyCls} px-6">${circlesHtml}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDashboard(data) {
+      if (!data || !data.module) return;
+      const mod = data.module;
+      const isTickets = mod === 'TICKETS';
+
+      document.getElementById('waitingScreen').classList.add('hidden');
+      document.getElementById('dashboardContent').classList.remove('hidden');
+
+      const pill = document.getElementById('autoDetectPill');
+      pill.textContent = data.autoDetectedBadge || `Auto-Detected: ${mod} ONLY`;
+      pill.className = "px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 rounded-full";
+
+      const modPill = document.getElementById('activeDashboardPill');
+      modPill.textContent = `${mod.charAt(0) + mod.slice(1).toLowerCase()} Dashboard`;
+      modPill.classList.remove('hidden');
+
+      const k = data.kpis || {};
+      const kpiItems = mod === 'FEEDBACK' ? [
+        ['Total Respondents', k.totalFeedbackResponses, 'text-white', `${k.totalTouchpointRatings || 0} Department Ratings`],
+        ['Positive Sentiment', `${k.positivePatients} (${k.satisfactionRatePct}%)`, 'text-emerald-400', 'Overall Hospital Positive'],
+        ['Negative / Risk', k.criticalRiskPatients, 'text-rose-400', 'Overall Hospital Negative'],
+        ['Primary Bottleneck', k.lowestTouchpoint, 'text-amber-400', 'Lowest Rated Touchpoint']
+      ] : mod === 'TICKETS' ? [
+        ['Total Escalated Tickets', k.totalTickets, 'text-white', 'All Hospital Specialties'],
+        ['Open Backlog Tickets', k.openTickets, 'text-rose-400', 'Awaiting SLA Resolution'],
+        ['Solved Tickets', k.solvedTickets, 'text-emerald-400', 'Closed & Verified'],
+        ['#1 Open Backlog Unit', `${k.topDepartment} (${k.topDepartmentCount} Open)`, 'text-amber-400', 'Highest Unresolved Backlog']
+      ] : mod === 'NPS' ? [
+        ['Overall Net Promoter Score', k.npsScore, 'text-emerald-400', `Mean Rating: ${k.npsAvgRating}/10`],
+        ['Promoters (9-10)', `${k.promoterPct}%`, 'text-emerald-300', 'Overall Hospital Advocates'],
+        ['Detractors (0-6)', `${k.detractorPct}%`, 'text-rose-400', 'Escalation Risk'],
+        ['Lowest NPS Unit', k.lowestArea, 'text-amber-400', 'Priority Recovery Unit']
+      ] : [
+        ['Overall Hospital CSAT', `${k.currentSatisfiedPct}%`, 'text-emerald-400', 'All Departments Combined'],
+        ['Mean Star Rating', `${k.currentCsatAvg}/5.0`, 'text-white', 'Normalized 1-5 Scale'],
+        ['Unsatisfied %', `${k.currentDissatisfiedPct}%`, 'text-rose-400', 'Negative CSAT Share'],
+        ['Lowest CSAT Unit', k.lowestDepartment, 'text-amber-400', 'Service Audit Target']
+      ];
+
+      document.getElementById('kpiGrid').innerHTML = kpiItems.map(([label, val, color, sub]) => `
+        <div class="card-dark p-4 shadow-lg">
+          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">${label}</p>
+          <p class="text-2xl font-extrabold mt-1 ${color}">${val ?? '-'}</p>
+          <p class="text-[11px] text-slate-500 mt-1">${sub}</p>
+        </div>
+      `).join('');
+
+      document.getElementById('strengthHeadline').textContent = data.strengthHeadline || '';
+      document.getElementById('strengthExplanation').textContent = data.strengthExplanation || '';
+      document.getElementById('strengthCardsContainer').innerHTML = (data.topStrengthCards || []).map(c => `
+        <div class="inner-strength-card p-3.5">
+          <div class="flex items-center justify-between">
+            <span class="font-extrabold text-sm text-white">${c.department}</span>
+            <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              ${c.metricBadge}
+            </span>
+          </div>
+          <p class="text-xs text-slate-300 mt-1.5 font-medium">${c.sentimentBreakdown || ''}</p>
+          <p class="text-xs text-emerald-400 mt-1.5 font-semibold">✔ ${c.whyGoodReason}</p>
+          <p class="text-[11px] text-amber-300/90 mt-1">💡 ${c.bestPractice}</p>
+        </div>
+      `).join('');
+
+      document.getElementById('sentimentHeadline').textContent = data.sentimentHeadline || '';
+      document.getElementById('sentimentExplanation').textContent = data.sentimentExplanation || '';
+      document.getElementById('rootCauseCardsContainer').innerHTML = (data.rootCauseCards || []).map(c => `
+        <div class="inner-bottleneck-card p-3.5">
+          <div class="flex items-center justify-between">
+            <span class="font-extrabold text-sm text-white">${c.department}</span>
+            <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+              ${c.metricBadge}
+            </span>
+          </div>
+          <p class="text-xs text-slate-300 mt-1.5 font-medium">${c.sentimentBreakdown || ''}</p>
+          <p class="text-xs text-rose-300 mt-1.5 font-semibold">🔍 Why Low: ${c.whyBadReason}</p>
+          <p class="text-[11px] text-slate-300 mt-1">🛠 Action: ${c.recommendedAction}</p>
+        </div>
+      `).join('');
+
+      document.getElementById('leftChartTitle').textContent = isTickets
+        ? 'Escalated Ticket Volume by Hospital Specialty (Open Backlog vs Solved)'
+        : 'Department Feedback Sentiment Split (All Hospital Units)';
+
+      document.getElementById('rightChartTitle').textContent = isTickets
+        ? 'Pareto Problem Severity Index by Specialty (% Relative to #1 Bottleneck)'
+        : 'Sub-Question Polarity Share (%)';
+      document.getElementById('rightChartSub').textContent = isTickets
+        ? 'Ranked from highest complaint load (100%) to lowest so high-ticket departments stand out clearly'
+        : 'Percentage of Negative, Neutral & Positive responses per question';
+
+      if (deptChart) deptChart.destroy();
+      const tpRows = data.touchpointRatings || [];
+      deptChart = new Chart(document.getElementById('deptSplitChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: tpRows.map(r => r.touchpoint || r.department),
+          datasets: [
+            { label: isTickets ? 'Open Backlog Tickets' : 'Negative', data: tpRows.map(r => r.negativeCount ?? 0), backgroundColor: '#ef4444' },
+            { label: 'Neutral', data: tpRows.map(r => r.neutralCount ?? 0), backgroundColor: '#f59e0b' },
+            { label: isTickets ? 'Solved Tickets' : 'Positive', data: tpRows.map(r => r.positiveCount ?? 0), backgroundColor: '#10b981' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#cbd5e1', font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                afterBody: (items) => tpRows[items[0].dataIndex]?.hoverReason || ''
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(148,163,184,0.08)' } },
+            y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: 'rgba(148,163,184,0.08)' } }
+          }
+        }
+      });
+
+      if (subQChart) subQChart.destroy();
+      const sqRows = data.subQuestionDrivers || [];
+      subQChart = new Chart(document.getElementById('subQuestionChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: sqRows.map(r => r.shortLabel),
+          datasets: [
+            { label: isTickets ? 'Open Problem Severity %' : 'Negative %', data: sqRows.map(r => r.negativePct ?? 0), backgroundColor: '#ef4444' },
+            { label: 'Neutral %', data: sqRows.map(r => r.neutralPct ?? 0), backgroundColor: '#f59e0b' },
+            { label: isTickets ? 'SLA Solved Share %' : 'Positive %', data: sqRows.map(r => r.positivePct ?? 0), backgroundColor: '#10b981' }
+          ]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#cbd5e1', font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                afterBody: (items) => sqRows[items[0].dataIndex]?.hoverReason || ''
+              }
+            }
+          },
+          scales: {
+            x: { stacked: true, min: 0, max: 100, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.08)' } },
+            y: { stacked: true, ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { display: false } }
+          }
+        }
+      });
+
+      renderDottedAndCircleTrends(data.periodTrend || [], mod, data.trendTitle);
+
+      document.getElementById('topPositiveContainer').innerHTML = (data.topPositiveComments || []).map((c, i) => `
+        <div class="inner-strength-card p-3.5">
+          <div class="flex items-center justify-between">
+            <span class="font-extrabold text-xs text-emerald-400">#${i + 1} - ${c.department}</span>
+            <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              ${c.rating}
+            </span>
+          </div>
+          <p class="text-xs italic text-slate-200 mt-2 leading-relaxed">"${c.comment}"</p>
+          <p class="text-[11px] text-emerald-400 font-semibold mt-2">✔ Driver: ${c.reason}</p>
+        </div>
+      `).join('');
+
+      document.getElementById('topNegativeContainer').innerHTML = (data.topNegativeComments || []).map((c, i) => `
+        <div class="inner-bottleneck-card p-3.5">
+          <div class="flex items-center justify-between">
+            <span class="font-extrabold text-xs text-rose-400">#${i + 1} - ${c.department}</span>
+            <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+              ${c.rating}
+            </span>
+          </div>
+          <p class="text-xs italic text-slate-200 mt-2 leading-relaxed">"${c.comment}"</p>
+          <p class="text-[11px] text-rose-400 font-semibold mt-2">🔍 Root Cause: ${c.reason}</p>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fi = document.getElementById('fileInput');
+      if (!fi.files.length) return;
+      const fd = new FormData();
+      fd.append('file', fi.files[0]);
+      fd.append('module', document.getElementById('moduleSelect').value);
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const out = await res.json();
+      if (res.ok) {
+        lastRenderedSignature = JSON.stringify(out.kpis || {});
+        renderDashboard(out);
+      } else {
+        alert(out.detail || 'Upload error');
+      }
+    });
+
+    async function pollStateFromSwaggerUploads() {
+      try {
+        const res = await fetch('/api/state');
+        const state = await res.json();
+        if (state && state.activeModule && state.activeModule !== 'NONE') {
+          const activePayload = state[state.activeModule];
+          const sig = state.activeModule + ":" + JSON.stringify(activePayload?.kpis || {});
+          if (sig !== lastRenderedSignature) {
+            lastRenderedSignature = sig;
+            renderDashboard(activePayload);
+          }
+        }
+      } catch (err) {}
+    }
+
+    setInterval(pollStateFromSwaggerUploads, 2000);
+    pollStateFromSwaggerUploads();
+  </script>
+</body>
+</html>
